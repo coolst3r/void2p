@@ -23,7 +23,26 @@ else
   exit 1
 fi
 
+# Get the interface with internet activity
+get_active_interface() {
+  local interfaces=$(ip link show | awk -F': ' '/^[0-9]+:/{print $2}')
+  
+  for interface in $interfaces; do
+    if ping -q -c 1 -W 1 -I $interface google.com >/dev/null; then
+      echo $interface
+      return
+    fi
+  done
+}
+
 # Configure Dante SOCKS server
+active_interface=$(get_active_interface)
+
+if [ -z "$active_interface" ]; then
+  echo "No active internet connection found"
+  exit 1
+fi
+
 cat <<EOF > /etc/danted.conf
 logoutput: stderr
 internal: 0.0.0.0 port = 1080
